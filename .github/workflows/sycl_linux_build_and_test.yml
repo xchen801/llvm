@@ -215,12 +215,11 @@ jobs:
           sudo mv get_release.py /opt/
           sudo -E /opt/install_drivers.sh --all
         fi
-    # FIXME cached_checkout fails here, but works everywhere else
-    - uses: actions/checkout@v3
+    - uses: ./actions/cached_checkout
       with:
-        persist-credentials: false
         path: llvm
         ref: ${{ inputs.build_ref || github.sha }}
+        cache_path: "/__w/repo_cache/"
     # TODO should this action be packed into container as well?
     - uses: ./llvm/devops/actions/e2e-tests
       name: Run SYCL End-to-End tests

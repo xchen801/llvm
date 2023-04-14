@@ -136,12 +136,11 @@ jobs:
         git config --system core.longpaths true
         git config --global core.autocrlf false
         echo "C:\Program Files\Git\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-    # TODO: use cached_checkout
     - uses: actions/checkout@v3
       with:
-        persist-credentials: false
-        ref: ${{ inputs.build_ref || github.sha }}
         path: llvm
+        ref: ${{ inputs.build_ref || github.sha }}
+        fetch-depth: 1
     - name: Register cleanup after job is finished
       uses: ./llvm/devops/actions/cleanup
     - uses: ./llvm/devops/actions/e2e-tests-win
