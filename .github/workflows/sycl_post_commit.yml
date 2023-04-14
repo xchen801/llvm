@@ -4,9 +4,11 @@ on:
   push:
     branches:
     - sycl
+    - fix-e2e-checkout-version
   pull_request:
     branches:
     - sycl
+    - fix-e2e-checkout-version
     paths:
     - .github/workflows/sycl_post_commit.yml
     - .github/workflows/sycl_gen_test_matrix.yml
