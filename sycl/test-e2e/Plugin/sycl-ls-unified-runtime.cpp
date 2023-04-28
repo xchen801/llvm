@@ -1,3 +1,4 @@
+// REQUIRES: gpu, level_zero
 // RUN: env ONEAPI_DEVICE_SELECTOR="ext_oneapi_level_zero:*" sycl-ls --verbose 2>&1 | FileCheck --check-prefixes=CHECK-PI %s
 // RUN: env SYCL_PREFER_UR=0 ONEAPI_DEVICE_SELECTOR="ext_oneapi_level_zero:*" sycl-ls --verbose 2>&1 | FileCheck --check-prefixes=CHECK-PI %s
 // RUN: env SYCL_PREFER_UR=1 ONEAPI_DEVICE_SELECTOR="ext_oneapi_level_zero:*" sycl-ls --verbose 2>&1 | FileCheck --check-prefixes=CHECK-UR %s
