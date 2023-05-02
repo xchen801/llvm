@@ -24,13 +24,13 @@ void handleInvalidWorkGroupSize(const device_impl &DeviceImpl, pi_kernel Kernel,
                                 const NDRDescT &NDRDesc) {
   const bool HasLocalSize = (NDRDesc.LocalSize[0] != 0);
 
-  const plugin &Plugin = DeviceImpl.getPlugin();
+  const PluginPtr &Plugin = DeviceImpl.getPlugin();
   RT::PiDevice Device = DeviceImpl.getHandleRef();
   sycl::platform Platform = DeviceImpl.get_platform();
 
   if (HasLocalSize) {
     size_t MaxThreadsPerBlock[3] = {};
-    Plugin.call<PiApiKind::piDeviceGetInfo>(
+    Plugin->call<PiApiKind::piDeviceGetInfo>(
         Device, PI_DEVICE_INFO_MAX_WORK_ITEM_SIZES, sizeof(MaxThreadsPerBlock),
         MaxThreadsPerBlock, nullptr);
 
@@ -49,8 +49,8 @@ void handleInvalidWorkGroupSize(const device_impl &DeviceImpl, pi_kernel Kernel,
 
   // Some of the error handling below is special for particular OpenCL
   // versions.  If this is an OpenCL backend, get the version.
-  bool IsOpenCL = false;    // Backend is any OpenCL version
-  bool IsOpenCLV1x = false; // Backend is OpenCL 1.x
+  bool IsOpenCL = false;      // Backend is any OpenCL version
+  bool IsOpenCLV1x = false;   // Backend is OpenCL 1.x
   bool IsOpenCLVGE20 = false; // Backend is Greater or Equal to OpenCL 2.0
   bool IsLevelZero = false;   // Backend is any OneAPI Level 0 version
   auto Backend = Platform.get_backend();
@@ -66,7 +66,7 @@ void handleInvalidWorkGroupSize(const device_impl &DeviceImpl, pi_kernel Kernel,
   }
 
   size_t CompileWGSize[3] = {0};
-  Plugin.call<PiApiKind::piKernelGetGroupInfo>(
+  Plugin->call<PiApiKind::piKernelGetGroupInfo>(
       Kernel, Device, PI_KERNEL_GROUP_INFO_COMPILE_WORK_GROUP_SIZE,
       sizeof(size_t) * 3, CompileWGSize, nullptr);
 
@@ -97,45 +97,45 @@ void handleInvalidWorkGroupSize(const device_impl &DeviceImpl, pi_kernel Kernel,
               std::to_string(CompileWGSize[0]) + "}",
           PI_ERROR_INVALID_WORK_GROUP_SIZE);
   }
-    if (IsOpenCLV1x) {
-      // OpenCL 1.x:
-      // PI_ERROR_INVALID_WORK_GROUP_SIZE if local_work_size is specified and
-      // the total number of work-items in the work-group computed as
-      // local_work_size[0] * ... * local_work_size[work_dim - 1] is greater
-      // than the value specified by PI_DEVICE_MAX_WORK_GROUP_SIZE in
-      // table 4.3
-      size_t MaxWGSize = 0;
-      Plugin.call<PiApiKind::piDeviceGetInfo>(
-          Device, PI_DEVICE_INFO_MAX_WORK_GROUP_SIZE, sizeof(size_t),
-          &MaxWGSize, nullptr);
-      const size_t TotalNumberOfWIs =
-          NDRDesc.LocalSize[0] * NDRDesc.LocalSize[1] * NDRDesc.LocalSize[2];
-      if (TotalNumberOfWIs > MaxWGSize)
-        throw sycl::nd_range_error(
-            "Total number of work-items in a work-group cannot exceed " +
-                std::to_string(MaxWGSize),
-            PI_ERROR_INVALID_WORK_GROUP_SIZE);
-    } else if (IsOpenCLVGE20 || IsLevelZero) {
-      // OpenCL 2.x or OneAPI Level Zero:
-      // PI_ERROR_INVALID_WORK_GROUP_SIZE if local_work_size is specified and
-      // the total number of work-items in the work-group computed as
-      // local_work_size[0] * ... * local_work_size[work_dim - 1] is greater
-      // than the value specified by PI_KERNEL_GROUP_INFO_WORK_GROUP_SIZE in
-      // table 5.21.
-      size_t KernelWGSize = 0;
-      Plugin.call<PiApiKind::piKernelGetGroupInfo>(
-          Kernel, Device, PI_KERNEL_GROUP_INFO_WORK_GROUP_SIZE, sizeof(size_t),
-          &KernelWGSize, nullptr);
-      const size_t TotalNumberOfWIs =
-          NDRDesc.LocalSize[0] * NDRDesc.LocalSize[1] * NDRDesc.LocalSize[2];
-      if (TotalNumberOfWIs > KernelWGSize)
-        throw sycl::nd_range_error(
-            "Total number of work-items in a work-group cannot exceed " +
-                std::to_string(KernelWGSize) + " for this kernel",
-            PI_ERROR_INVALID_WORK_GROUP_SIZE);
-    } else {
-      // TODO: Should probably have something similar for the other backends
-    }
+  if (IsOpenCLV1x) {
+    // OpenCL 1.x:
+    // PI_ERROR_INVALID_WORK_GROUP_SIZE if local_work_size is specified and
+    // the total number of work-items in the work-group computed as
+    // local_work_size[0] * ... * local_work_size[work_dim - 1] is greater
+    // than the value specified by PI_DEVICE_MAX_WORK_GROUP_SIZE in
+    // table 4.3
+    size_t MaxWGSize = 0;
+    Plugin->call<PiApiKind::piDeviceGetInfo>(
+        Device, PI_DEVICE_INFO_MAX_WORK_GROUP_SIZE, sizeof(size_t), &MaxWGSize,
+        nullptr);
+    const size_t TotalNumberOfWIs =
+        NDRDesc.LocalSize[0] * NDRDesc.LocalSize[1] * NDRDesc.LocalSize[2];
+    if (TotalNumberOfWIs > MaxWGSize)
+      throw sycl::nd_range_error(
+          "Total number of work-items in a work-group cannot exceed " +
+              std::to_string(MaxWGSize),
+          PI_ERROR_INVALID_WORK_GROUP_SIZE);
+  } else if (IsOpenCLVGE20 || IsLevelZero) {
+    // OpenCL 2.x or OneAPI Level Zero:
+    // PI_ERROR_INVALID_WORK_GROUP_SIZE if local_work_size is specified and
+    // the total number of work-items in the work-group computed as
+    // local_work_size[0] * ... * local_work_size[work_dim - 1] is greater
+    // than the value specified by PI_KERNEL_GROUP_INFO_WORK_GROUP_SIZE in
+    // table 5.21.
+    size_t KernelWGSize = 0;
+    Plugin->call<PiApiKind::piKernelGetGroupInfo>(
+        Kernel, Device, PI_KERNEL_GROUP_INFO_WORK_GROUP_SIZE, sizeof(size_t),
+        &KernelWGSize, nullptr);
+    const size_t TotalNumberOfWIs =
+        NDRDesc.LocalSize[0] * NDRDesc.LocalSize[1] * NDRDesc.LocalSize[2];
+    if (TotalNumberOfWIs > KernelWGSize)
+      throw sycl::nd_range_error(
+          "Total number of work-items in a work-group cannot exceed " +
+              std::to_string(KernelWGSize) + " for this kernel",
+          PI_ERROR_INVALID_WORK_GROUP_SIZE);
+  } else {
+    // TODO: Should probably have something similar for the other backends
+  }
 
   if (HasLocalSize) {
     // Is the global range size evenly divisible by the local workgroup size?
@@ -178,15 +178,15 @@ void handleInvalidWorkGroupSize(const device_impl &DeviceImpl, pi_kernel Kernel,
           // given by local_work_size
 
           pi_program Program = nullptr;
-          Plugin.call<PiApiKind::piKernelGetInfo>(
+          Plugin->call<PiApiKind::piKernelGetInfo>(
               Kernel, PI_KERNEL_INFO_PROGRAM, sizeof(pi_program), &Program,
               nullptr);
           size_t OptsSize = 0;
-          Plugin.call<PiApiKind::piProgramGetBuildInfo>(
+          Plugin->call<PiApiKind::piProgramGetBuildInfo>(
               Program, Device, PI_PROGRAM_BUILD_INFO_OPTIONS, 0, nullptr,
               &OptsSize);
           std::string Opts(OptsSize, '\0');
-          Plugin.call<PiApiKind::piProgramGetBuildInfo>(
+          Plugin->call<PiApiKind::piProgramGetBuildInfo>(
               Program, Device, PI_PROGRAM_BUILD_INFO_OPTIONS, OptsSize,
               &Opts.front(), nullptr);
           const bool HasStd20 = Opts.find("-cl-std=CL2.0") != std::string::npos;
@@ -251,12 +251,12 @@ void handleInvalidWorkGroupSize(const device_impl &DeviceImpl, pi_kernel Kernel,
 void handleInvalidWorkItemSize(const device_impl &DeviceImpl,
                                const NDRDescT &NDRDesc) {
 
-  const plugin &Plugin = DeviceImpl.getPlugin();
+  const PluginPtr &Plugin = DeviceImpl.getPlugin();
   RT::PiDevice Device = DeviceImpl.getHandleRef();
 
   size_t MaxWISize[] = {0, 0, 0};
 
-  Plugin.call<PiApiKind::piDeviceGetInfo>(
+  Plugin->call<PiApiKind::piDeviceGetInfo>(
       Device, PI_DEVICE_INFO_MAX_WORK_ITEM_SIZES, sizeof(MaxWISize), &MaxWISize,
       nullptr);
   for (unsigned I = 0; I < NDRDesc.Dims; I++) {
@@ -271,11 +271,11 @@ void handleInvalidWorkItemSize(const device_impl &DeviceImpl,
 
 void handleInvalidValue(const device_impl &DeviceImpl,
                         const NDRDescT &NDRDesc) {
-  const plugin &Plugin = DeviceImpl.getPlugin();
+  const PluginPtr &Plugin = DeviceImpl.getPlugin();
   RT::PiDevice Device = DeviceImpl.getHandleRef();
 
   size_t MaxNWGs[] = {0, 0, 0};
-  Plugin.call<PiApiKind::piDeviceGetInfo>(
+  Plugin->call<PiApiKind::piDeviceGetInfo>(
       Device, PI_EXT_ONEAPI_DEVICE_INFO_MAX_WORK_GROUPS_3D, sizeof(MaxNWGs),
       &MaxNWGs, nullptr);
   for (unsigned int I = 0; I < NDRDesc.Dims; I++) {
@@ -350,7 +350,7 @@ void handleErrorOrWarning(pi_result Error, const device_impl &DeviceImpl,
     // depending on whether PI_ERROR_PLUGIN_SPECIFIC_ERROR contains an error or
     // a warning. It also ensures that the contents of the error message buffer
     // (used only by PI_ERROR_PLUGIN_SPECIFIC_ERROR) get handled correctly.
-    return DeviceImpl.getPlugin().checkPiResult(Error);
+    return DeviceImpl.getPlugin()->checkPiResult(Error);
 
     // TODO: Handle other error codes
 
@@ -364,7 +364,7 @@ void handleErrorOrWarning(pi_result Error, const device_impl &DeviceImpl,
 
 namespace detail::kernel_get_group_info {
 void handleErrorOrWarning(pi_result Error, pi_kernel_group_info Descriptor,
-                          const plugin &Plugin) {
+                          const PluginPtr &Plugin) {
   assert(Error != PI_SUCCESS &&
          "Success is expected to be handled on caller side");
   switch (Error) {
@@ -378,7 +378,7 @@ void handleErrorOrWarning(pi_result Error, pi_kernel_group_info Descriptor,
     break;
   // TODO: Handle other error codes
   default:
-    Plugin.checkPiResult(Error);
+    Plugin->checkPiResult(Error);
     break;
   }
 }
